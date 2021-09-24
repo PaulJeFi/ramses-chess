@@ -16,7 +16,7 @@ def best_move(board, timeleft=None, depth=2) :
             time = timeleft/1000
             depth = 2
             if time > 18*60 :
-                depth = 3
+                depth = 2
             elif time > 30 :
                 depth = 2
             elif time > 3 :
