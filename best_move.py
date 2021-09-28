@@ -1,4 +1,4 @@
-#import CHESS as chess
+import chess
 import book
 import search
 from move_generation import get_ordered_moves
@@ -32,7 +32,7 @@ def best_move(board, timeleft=None, depth=2) :
             move = get_ordered_moves(board)[0]
             value = 0
         else :
-            move, value = search_test.search(board, depth)
+            move, value = search.search(board, depth)
         #print("On va faire", move)
         #print("Eval :", value)
         return str(move), value
