@@ -1,6 +1,6 @@
 #import CHESS as chess
 import book
-import search_test
+import search
 from move_generation import get_ordered_moves
 
 def best_move(board, timeleft=None, depth=2) :

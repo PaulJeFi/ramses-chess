@@ -1,79 +1,94 @@
 import chess
 import eval
-import move_generation
+from move_generation import get_ordered_moves, move_value
 import transposition
-
-from typing import Dict, List, Any
 import time
 
-debug_info: Dict[str, Any] = {'nodes': 0, 'time': 0}
 
-MATE_SCORE     = 1000000000
-MATE_THRESHOLD =  999000000
+def quiesce(pos, alpha, beta, depth=4) :
+    '''Effecture une recherche de quiescence.'''
+    stand_pat = eval.evaluation_turn(pos)
+    #return stand_pat # Uncommenter cette ligne pour un moteur moins performant mais plus rapide.
+    if stand_pat >= beta :
+        return beta
+    if alpha < stand_pat:
+        alpha = stand_pat
+    if depth >= 0 :
+        for move in get_ordered_moves(pos) :
+            if pos.is_capture(move) :
+                pos.push(move)        
+                score = -quiesce(pos, -beta, -alpha, depth-1)
+                pos.pop()
+                if score >= beta :
+                    return beta
+                if score > alpha :
+                    alpha = score  
+    return alpha
+
+# https://www.chessprogramming.org/Principal_Variation_Search
+def pvSearch(board, alpha, beta, depth) :
+    '''PrincipaL Variation Search'''
+    if (depth == 0) :
+        return quiesce(board, alpha, beta)
+    bSearchPv = True
+    for move in get_ordered_moves(board) :
+        board.push(move)
+        if bSearchPv :
+            score = -pvSearch(board, -beta, -alpha, depth-1)
+        else :
+            score = -zwSearch(board, -alpha, depth - 1)
+            if (score > alpha) : # in fail-soft ... && score < beta ) is common
+                score = -pvSearch(board, -beta, -alpha, depth-1) # re-search
+        board.pop()
+        if (score >= beta) :
+            return beta   # fail-hard beta-cutoff
+        if (score > alpha) :
+            alpha = score # alpha acts like max in MiniMax
+            bSearchPv = False   # *1)
+    return alpha
+
+# fail-hard zero window search, returns either beta-1 or beta
+def zwSearch(board, beta, depth) :
+    '''Zero Window Search'''
+    # alpha == beta - 1
+    # this is either a cut- or all-node
+    if (depth == 0) :
+        return quiesce(board, beta-1, beta)
+    for move in get_ordered_moves(board)  :
+        board.push(move)
+        score = -zwSearch(board, 1-beta, depth-1)
+        board.pop()
+        if (score >= beta) :
+            return beta   # fail-hard beta-cutoff
+    return beta-1 # fail-hard, return alpha
 
 
-def next_move(depth: int, board: chess.Board, debug=True) -> chess.Move:
-    """
-    What is the next best move?
-    """
-    debug_info.clear()
-    debug_info["nodes"] = 0
-    t0 = time.time()
-
-    move, value = minimax_root(depth, board)
-
-    debug_info["time"] = time.time() - t0
-    if debug == True:
-        #print(f"info {debug_info}")
-        "info depth 7 seldepth 7 multipv 1 score cp 47 nodes 1040 nps 173333 tbhits 0 time 6 pv e2e4 c7c5 g1f3 b8c6 d2d4 c5d4"
-        print(f'info depth {depth} score cp {round(value*100)} nodes {debug_info["nodes"]} time {round(debug_info["time"]*1000)} pv {str(move)}')
-    return move, value
-
-
-def get_ordered_moves(board: chess.Board) -> List[chess.Move]:
-    """
-    Get legal moves.
-    Attempt to sort moves by best to worst.
-    Use piece values (and positional gains/losses) to weight captures.
-    """
-    end_game = (eval.phase(board) == 'Fin de partie')
-
-    def orderer(move):
-        return move_generation.move_value(board, move, end_game)
-
-    in_order = sorted(
-        board.legal_moves, key=orderer, reverse=(board.turn == chess.WHITE)
-    )
-    return list(in_order)
-
-
-def minimax_root(depth: int, board: chess.Board) -> chess.Move:
-    """
-    What is the highest value move per our evaluation function?
-    """
-    # White always wants to maximize (and black to minimize)
-    # the board score according to evaluate_board()
+def PVS_root(depth: int, board: chess.Board, moves=None, t0=0) -> chess.Move:
+    '''Retourne le meilleur coup accompagné de son évaluation.'''
     maximize = board.turn == chess.WHITE
     best_move = -float("inf")
     if not maximize:
         best_move = float("inf")
 
-    moves = get_ordered_moves(board)
+    if moves == None :
+        moves = get_ordered_moves(board)
     best_move_found = moves[0]
     nodes = 0
-    t0 = time.time()
+    if t0 == 0 :
+        t0 = time.time()
 
-    for move in moves:
+    for move in moves :
         board.push(move)
-        # Checking if draw can be claimed at this level, because the threefold repetition check
-        # can be expensive. This should help the bot avoid a draw if it's not favorable
-        # https://python-chess.readthedocs.io/en/latest/core.html#chess.Board.can_claim_draw
         if board.can_claim_draw():
             value = 0.0
         else :
             value = transposition.find_eval(board, depth)
             if value == None :
-                value = minimax(depth - 1, board, -float("inf"), float("inf"), not maximize)
+                value = pvSearch(board, -float("inf"), float("inf"), depth-1)
+                if board.turn == chess.WHITE :
+                    pass
+                else :
+                    value = -value
                 if not maximize :
                     evalu = -value
                 else :
@@ -82,79 +97,94 @@ def minimax_root(depth: int, board: chess.Board) -> chess.Move:
             elif not maximize :
                 value = -value
         board.pop()
-        if maximize and value >= best_move:
+        if maximize and value >= best_move :
             best_move = value
             best_move_found = move
-        elif not maximize and value <= best_move:
+        elif not maximize and value <= best_move :
             best_move = value
             best_move_found = move
         nodes += 1
-        print(f'info depth {depth} score cp {round(best_move*100)} nodes {nodes} time {round(1000 * (time.time() - t0))} pv {str(best_move_found)}')
+        print(f'info depth {depth} score cp {round(arround(best_move)*100)} nodes {nodes} time {round(1000 * (time.time() - t0))} pv {str(best_move_found)}')
+        # Pour l'instant, les nodes ne sont pas des vrais nodes.
 
     return best_move_found, best_move
 
+def iterative_deepening(board, Depth) :
+    depth = 1
+    t0 = time.time()
+    moves = get_ordered_moves(board)
+    while depth != Depth :
+        moves = move_ordering(board, depth, t0, moves)
+        moves = moves[0:3]
+        depth += 1
+    return PVS_root(Depth, board, moves, t0)
 
-def minimax(
-    depth: int,
-    board: chess.Board,
-    alpha: float,
-    beta: float,
-    is_maximising_player: bool,
-) -> float:
-    """
-    Core minimax logic.
-    https://en.wikipedia.org/wiki/Minimax
-    """
-    debug_info["nodes"] += 1
-
-    if board.is_checkmate():
-        # The previous move resulted in checkmate
-        return -MATE_SCORE if is_maximising_player else MATE_SCORE
-    # When the game is over and it's not a checkmate it's a draw
-    # In this case, don't evaluate. Just return a neutral result: zero
-    elif board.is_game_over():
-        return 0
-
-    if depth == 0:
-        return eval.evaluate(board)
-
-    if is_maximising_player:
-        best_move = -float("inf")
+def move_ordering(board, depth, t0=0, moves=None) :
+    '''Pour les tests. Retourne les mouvements dans l'ordre par rapport à une depth données.'''
+    if t0 == 0 :
+        t0 = time.time()
+    if moves == None :
         moves = get_ordered_moves(board)
-        for move in moves:
-            board.push(move)
-            curr_move = minimax(depth - 1, board, alpha, beta, not is_maximising_player)
-            # Each ply after a checkmate is slower, so they get ranked slightly less
-            # We want the fastest mate!
-            if curr_move > MATE_THRESHOLD:
-                curr_move -= 1
-            elif curr_move < -MATE_THRESHOLD:
-                curr_move += 1
-            best_move = max(
-                best_move,
-                curr_move,
-            )
-            board.pop()
-            alpha = max(alpha, best_move)
-            if beta <= alpha:
-                return best_move
-        return best_move
-    else:
-        best_move = float("inf")
-        moves = get_ordered_moves(board)
-        for move in moves:
-            board.push(move)
-            curr_move = minimax(depth - 1, board, alpha, beta, not is_maximising_player)
-            if curr_move > MATE_THRESHOLD:
-                curr_move -= 1
-            elif curr_move < -MATE_THRESHOLD:
-                curr_move += 1
-            best_move = min(
-                best_move,
-                curr_move,
-            )
-            board.pop()
-            beta = min(beta, best_move)
-            if beta <= alpha:
-                return best_move
-        return best_move
+    if board.turn == chess.WHITE :
+        best_value = -float('inf')
+    else :
+        best_value = float('inf')
+    best_move = moves[0]
+    best_moves_values = []
+    best_moves = []
+    nodes = 0
+    for move in moves :
+        board.push(move)
+
+        if board.can_claim_draw():
+            value = 0.0
+        
+        else :
+            value = transposition.find_eval(board, depth)
+            if value == None :
+                value = pvSearch(board, -float("inf"), float("inf"), depth-1)
+                if board.turn == chess.WHITE :
+                    pass
+                else :
+                    value = -value
+                transposition.add_eval(board, depth, value)
+            else :
+                pass
+            best_moves.append(move)
+            best_moves_values.append(value)
+        nodes += 1
+        print(f'info depth {depth} score cp {round(arround(best_value)*100)} nodes {nodes} time {round(1000 * (time.time() - t0))} pv {str(best_move)}')
+        board.pop()
+        if board.turn == chess.WHITE :
+            if value > best_value :
+                    best_value = value
+                    best_move = move
+        else :
+            if value < best_value :
+                    best_value = value
+                    best_move = move
+
+    #print(f'\n{[round(value) for value in best_moves_values]}\n{[str(move) for move in best_moves]}\n')
+    return sorted(best_moves, key=lambda m: best_moves_values[best_moves.index(m)], reverse=board.turn)
+    
+
+def arround(value) :
+    '''Permet de retourner la valeur de mat numériquement.'''
+    if value == float('inf') :
+        return 10000000000
+    elif value == -float('inf') :
+        return -10000000000
+    else :
+        return value
+
+def search(board, depth) :
+    '''On part de l'hypothèse que le meilleur coup en profondeur n se retrouve
+    dans les trois meilleurs coups en profondeur n. Cette hypothèse est vraie
+    63 % du temps (sans quiescence) et divise le temps de recherche par 11
+    si on ne prend que les trois meilleurs coups.'''
+    t0 = time.time()
+    conj = move_ordering(board, depth-1, t0)
+    if len(conj) >= 3 :
+        conj = conj[0:3]
+    move, value = PVS_root(depth, board, conj, t0)
+    return move, value
