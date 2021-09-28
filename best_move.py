@@ -1,4 +1,4 @@
-#import chess
+import chess
 import book
 import search
 from move_generation import get_ordered_moves
