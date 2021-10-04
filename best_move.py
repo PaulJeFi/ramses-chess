@@ -11,7 +11,7 @@ def best_move(board, timeleft=None, depth=2) :
     if move != None :
         #print("Book : {}".format(move))
         return move, 0
-    move = book.tablebase(board)
+    move = tablebase(board)
     if move != None :
         return move, 0
     else :
