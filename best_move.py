@@ -2,6 +2,7 @@ import chess
 import book
 import search
 from move_generation import get_ordered_moves
+from tablebase_online import tablebase
 
 def best_move(board, timeleft=None, depth=2) :
     '''Détermine le meilleur coup.'''
@@ -9,6 +10,9 @@ def best_move(board, timeleft=None, depth=2) :
     move = book.move_from_book(board, book.book)
     if move != None :
         #print("Book : {}".format(move))
+        return move, 0
+    move = book.tablebase(board)
+    if move != None :
         return move, 0
     else :
         #print("On commence à chercher le meilleur coup.")
