@@ -1,5 +1,5 @@
 import chess
-import book
+import stockfish_book as book
 import search
 from move_generation import get_ordered_moves
 from tablebase_online import tablebase
