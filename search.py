@@ -3,6 +3,8 @@ import eval
 from move_generation import get_ordered_moves, move_value
 import transposition
 import time
+from threading import Thread
+from copy import deepcopy
 
 
 def quiesce(pos, alpha, beta, depth=4) :
@@ -178,6 +180,7 @@ def arround(value) :
         return value
 
 def search(board, depth) :
+    # return thread(board, depth) # with threads
     '''On part de l'hypothèse que le meilleur coup en profondeur n se retrouve
     dans les trois meilleurs coups en profondeur n. Cette hypothèse est vraie
     63 % du temps (sans quiescence) et divise le temps de recherche par 11
@@ -188,3 +191,36 @@ def search(board, depth) :
         conj = conj[0:3]
     move, value = PVS_root(depth, board, conj, t0)
     return move, value
+
+class ThreadWithReturnValue(Thread):
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs={}, Verbose=None):
+        Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+    def run(self):
+        #print(type(self._target))
+        if self._target is not None:
+            self._return = self._target(*self._args,
+                                                **self._kwargs)
+    def join(self, *args):
+        Thread.join(self, *args)
+        return self._return
+
+def thread(board: chess.Board, depth: int) :
+    values = []
+    moves = []
+    for move in board.legal_moves :
+        pos = deepcopy(board)
+        pos.push(move)
+        moves.append(str(move))
+        values.append(ThreadWithReturnValue(target=pvSearch, args=(pos, -float('inf'), float('inf'), depth-2)))
+    for _thread in values :
+        _thread.start()
+    for i in range(len(values)) :
+        values[i] = values[i].join()
+    if board.turn :
+        value = -min(values)
+    else :
+        value = min(values)
+    print(value)
+    return moves[values.index(min(values))], value
