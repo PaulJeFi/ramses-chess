@@ -1,5 +1,5 @@
 import chess
-import book
+import stockfish_book
 import search
 from move_generation import get_ordered_moves
 from tablebase_online import tablebase
@@ -7,10 +7,13 @@ from tablebase_online import tablebase
 def best_move(board, timeleft=None, depth=2) :
     '''Détermine le meilleur coup.'''
     value = 0
-    move = book.move_from_book(board, book.book)
-    if move != None :
-        #print("Book : {}".format(move))
-        return move, 0
+    try :
+        move = stockfish_book.book.move_from_book(board, stockfish_book.book)
+        if move != None :
+            #print("Book : {}".format(move))
+            return move, 0
+    except Exception :
+        pass
     move = tablebase(board)
     if move != None :
         return move, 0
