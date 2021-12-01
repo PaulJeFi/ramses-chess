@@ -8,7 +8,7 @@ def best_move(board, timeleft=None, depth=2) :
     '''Détermine le meilleur coup.'''
     value = 0
     try :
-        move = stockfish_book.book.move_from_book(board, stockfish_book.book)
+        move = stockfish_book.move_from_book(board, stockfish_book.book)
         if move != None :
             #print("Book : {}".format(move))
             return move, 0

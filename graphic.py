@@ -7,8 +7,6 @@ screen = pygame.display.set_mode((size*8, size*8))
 pygame.display.set_caption("Chess Engine")
 screen.fill("WHITE")
 
-pygame.display.set_icon(pygame.image.load('/Users/pauljerome--filio/Documents/Python_files/Chess_engine/graph/icone.png').convert_alpha())
-
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = ((205+170)/2, (210+162)/2, (112+65)/2)
