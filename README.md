@@ -7,8 +7,3 @@ Or you can just plat it by downloadding this repo, being sure you've got Python 
 $ pip install python-chess
 $ pip install pygame
 ```
-
-Somes goods resources :
-https://github.com/healeycodes/andoma
-And of course :
-https://www.chessprogramming.org
