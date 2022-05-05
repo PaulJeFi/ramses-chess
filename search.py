@@ -57,7 +57,8 @@ def get_ordered_moves(board: chess.Board, captures_only: bool=False) -> list :
         if not (True in move_list) :
             good_index = len(move_list) - 1
         else :
-            good_index = [(move['cp'] <= 150) for move in move_list].index(True)
+            good_index = len(move_list) - 1
+            #good_index = [(move['cp'] <= 150) for move in move_list].index(True)
 
     # Étape 4 : insertion des autres coups
     castle = board.generate_castling_moves()
@@ -86,6 +87,7 @@ class Search :
         self.board = board
         self.depth = depth
         self.nodes = 0
+        self.pv = list(range(int((self.depth*self.depth + self.depth)/2)+1))
         self.base_number_of_moves = len(self.board.move_stack) # pour distance to mate dans quiesce
     
     def quiesce(self, alpha: float=-mateValue, beta: float=mateValue) -> float :
@@ -101,6 +103,20 @@ class Search :
                 if self.board.is_checkmate() :
                     return -mateValue + (self.base_number_of_moves - len(self.board.move_stack))
                 return 0
+
+        # Mate distance pruning
+        # Upper bound
+        mating_value = mateValue - (self.base_number_of_moves - len(self.board.move_stack))
+        if mating_value <= beta :
+            beta = mating_value
+            if alpha >= mating_value :
+                return mating_value
+        # Lower bound
+        mating_value = mating_value = -mateValue + (self.base_number_of_moves - len(self.board.move_stack))
+        if mating_value >= alpha :
+            alpha = mating_value
+            if beta <= mating_value : 
+                return mating_value
 
         if  stand_pat >= beta :
             return beta
@@ -121,8 +137,22 @@ class Search :
 
     def zwSearch(self, beta: float, depth: int) -> float :
         '''fail-hard zero window search, returns either beta-1 or beta'''
-        # alpha == beta - 1
+        alpha = beta - 1
         # this is either a cut- or all-node
+
+        # Mate distance pruning
+        # Upper bound
+        mating_value = mateValue - (self.depth - depth)
+        if mating_value <= beta :
+            beta = mating_value
+            if alpha >= mating_value :
+                return mating_value
+        # Lower bound
+        mating_value = mating_value = -mateValue + (self.depth - depth)
+        if mating_value >= alpha :
+            alpha = mating_value
+            if beta <= mating_value : 
+                return mating_value
 
         moves = self.board.legal_moves
 
@@ -130,7 +160,7 @@ class Search :
         if not bool(moves) :
             self.nodes += 1
             if self.board.is_checkmate() :
-                return -mateValue + (self.depth - depth) # pour distance to mate
+                return mating_value # pour distance to mate
             return 0
 
         if depth == 0 :
@@ -146,7 +176,23 @@ class Search :
         return beta-1 # fail-hard, return alpha
 
 
-    def pvSearch(self, alpha: float=-mateValue, beta: float=mateValue, depth=3) -> float :
+    def pvSearch(self, alpha: float=-mateValue, beta: float=mateValue, depth=3, pvIndex: int=0) -> float :
+
+        moves = self.board.legal_moves
+
+        # Mate distance pruning
+        # Upper bound
+        mating_value = mateValue - (self.depth - depth)
+        if mating_value <= beta :
+            beta = mating_value
+            if alpha >= mating_value :
+                return mating_value
+        # Lower bound
+        mating_value = mating_value = -mateValue + (self.depth - depth)
+        if mating_value >= alpha :
+            alpha = mating_value
+            if beta <= mating_value : 
+                return mating_value
 
         moves = self.board.legal_moves
 
@@ -154,26 +200,35 @@ class Search :
         if not bool(moves) :
             self.nodes += 1
             if self.board.is_checkmate() :
-                return -mateValue + (self.depth - depth) # pour distance to mate
+                return mating_value # pour distance to mate
             return 0
 
         if depth == 0 :
             return self.quiesce(alpha, beta)
 
+        # PV store initialisation :
+        self.pv[pvIndex] = 0 # no pv yet
+        pvNextIndex = pvIndex + depth
+
         bSearchPv = True
         for move in moves :
             self.board.push(move)
             if bSearchPv :
-                score = -self.pvSearch(-beta, -alpha, depth - 1)
+                score = -self.pvSearch(-beta, -alpha, depth - 1, pvNextIndex)
             else :
                 score = -self.zwSearch(-alpha, depth - 1)
                 if ( score > alpha ) : # in fail-soft ... && score < beta ) is common
-                    score = -self.pvSearch(-beta, -alpha, depth - 1) # re-search
+                    score = -self.pvSearch(-beta, -alpha, depth - 1, pvNextIndex) # re-search
             self.board.pop()
+
             if  score >= beta :
                 return beta # fail-hard beta-cutoff
             if score > alpha :
                 alpha = score # alpha acts like max in MiniMax
                 bSearchPv = False   # *1)
+
+                # PV store :
+                self.pv[pvIndex] = move
+
         
         return alpha

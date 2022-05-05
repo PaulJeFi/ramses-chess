@@ -7,6 +7,13 @@ from tablebase_online import tablebase
 import time
 import evaluation
 
+# PV store comes from
+# https://www.chessprogramming.org/Triangular_PV-Table
+def index_pv(ply: int, depth: int) :
+    if ply == 0 : 
+        return 0 
+    return index_pv(ply-1, depth) + depth - (ply-1)
+
 def iterative_deepening(board: chess.Board, depth: int) -> tuple :
 
     # Temps au debut
@@ -30,6 +37,7 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
     if depth < 1 :
         return b_move, scaled_score
     
+    pv = {}
     last_time = time.time()
 
     # Initialisation précise du move ordering : depth 1
@@ -43,6 +51,9 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
         
         nodes += searcher.nodes
         moves.append((move, tmp_value))
+
+        pv[str(move)] = " ".join([[str(move) for move in searcher.pv][index_pv(ind, searcher.depth)] for ind in range(searcher.depth)])
+
     
     # Ordonner les coups :
     moves = sorted(moves, key=lambda x: x[1])
@@ -65,7 +76,7 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
     # uci report
     for ind, (move, value) in enumerate(moves) :
         print(f'info depth {curr_depth} currmove {str(move)} currmovenumber {ind+1}') 
-    print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(nodes/(time.time()-last_time))} time {int((time.time()-last_time) * 1000)} pv {str(b_move)}')
+    print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(nodes/(time.time()-last_time))} time {int((time.time()-last_time) * 1000)} pv {str(b_move)} {pv[str(b_move)]}')
     last_time = time.time()
 
     while curr_depth < depth :
@@ -79,10 +90,12 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
             searcher = search.Search(board, curr_depth-1)
             tmp_value = searcher.pvSearch(depth=searcher.depth)
             board.pop()
-            
+
             nodes += searcher.nodes
             new_nodes += searcher.nodes
             moves.append((move, tmp_value))
+
+            pv[str(move)] = " ".join([[str(move) for move in searcher.pv][index_pv(ind, searcher.depth)] for ind in range(searcher.depth)])
         
         # Ordonner les coups :
         moves = sorted(moves, key=lambda x: x[1])
@@ -105,7 +118,7 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
         # uci report
         for ind, (move, value) in enumerate(moves) :
             print(f'info depth {curr_depth} currmove {str(move)} currmovenumber {ind+1}') 
-        print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(new_nodes/(time.time()-last_time))} time {int((time.time()-last_time)) * 1000} pv {str(b_move)}')
+        print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(new_nodes/(time.time()-last_time))} time {int((time.time()-last_time)) * 1000} pv {str(b_move)} {pv[str(b_move)]}')
         last_time = time.time()
 
     return b_move, scaled_score
@@ -123,7 +136,7 @@ def best_move(board, timeleft=None, depth=2) :
     if move != None :
         return move, 0
 
-    return iterative_deepening(board, 4)
+    return iterative_deepening(board, 3)
 
 def game_is_finished(pos) :
     '''Détermine si la partie est finie.'''
