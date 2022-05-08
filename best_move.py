@@ -1,6 +1,6 @@
 import chess
 import stockfish_book
-import search
+import tac_search as search
 from move_generation import get_ordered_moves
 from tablebase_online import tablebase
 
