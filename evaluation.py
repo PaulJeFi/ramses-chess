@@ -7,7 +7,10 @@ rookValue = 500
 queenValue = 900
 kingValue = 20_000
 
-mateValue = 100_000_000_000 + 1
+mateValue = 100_000_000_000-1
+
+def popcount(a: int) -> int :
+    return bin(a).count("1")
 
 K = [-30,-40,-40,-50,-50,-40,-40,-30,
     -30,-40,-40,-50,-50,-40,-40,-30,
@@ -127,11 +130,11 @@ def game_phase(board: chess.Board) -> int :
 
     phase = TotalPhase
 
-    phase -= board.pawns.bit_count() * PawnPhase
-    phase -= board.knights.bit_count() * KnightPhase
-    phase -= board.bishops.bit_count() * KnightPhase
-    phase -= board.rooks.bit_count() * RookPhase
-    phase -= board.queens.bit_count() * QueenPhase
+    phase -= popcount(board.pawns) * PawnPhase
+    phase -= popcount(board.knights) * KnightPhase
+    phase -= popcount(board.bishops) * KnightPhase
+    phase -= popcount(board.rooks) * RookPhase
+    phase -= popcount(board.queens) * QueenPhase
 
     phase = (phase * 256 + (TotalPhase / 2)) / TotalPhase
     return phase

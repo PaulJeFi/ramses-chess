@@ -76,7 +76,7 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
     # uci report
     for ind, (move, value) in enumerate(moves) :
         print(f'info depth {curr_depth} currmove {str(move)} currmovenumber {ind+1}') 
-    print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(nodes/(time.time()-last_time))} time {int((time.time()-last_time) * 1000)} pv {str(b_move)} {pv[str(b_move)]}')
+    print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(nodes/(1+time.time()-last_time))} time {int((time.time()-last_time) * 1000)} pv {str(b_move)} {pv[str(b_move)]}')
     last_time = time.time()
 
     while curr_depth < depth :
@@ -118,7 +118,7 @@ def iterative_deepening(board: chess.Board, depth: int) -> tuple :
         # uci report
         for ind, (move, value) in enumerate(moves) :
             print(f'info depth {curr_depth} currmove {str(move)} currmovenumber {ind+1}') 
-        print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(new_nodes/(time.time()-last_time))} time {int((time.time()-last_time)) * 1000} pv {str(b_move)} {pv[str(b_move)]}')
+        print(f'info depth {curr_depth} score cp {int(scaled_score)} nodes {nodes} nps {int(new_nodes/1+(time.time()-last_time))} time {int((time.time()-last_time)) * 1000} pv {str(b_move)} {pv[str(b_move)]}')
         last_time = time.time()
 
     return b_move, scaled_score

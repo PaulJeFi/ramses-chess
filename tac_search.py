@@ -196,7 +196,7 @@ class Search :
         alpha = beta - 1
         # this is either a cut- or all-node
 
-        moves = self.board.legal_moves
+        moves = get_ordered_moves(self.board)
 
         # Mate distance pruning
         # Upper bound
@@ -211,8 +211,6 @@ class Search :
             alpha = mating_value
             if beta <= mating_value : 
                 return mating_value
-
-        moves = self.board.legal_moves
 
         # Fin de ligne
         if not bool(moves) :
@@ -237,7 +235,7 @@ class Search :
 
         self.nodes += 1
 
-        moves = self.board.legal_moves
+        moves = get_ordered_moves(self.board)
 
         # Mate distance pruning
         # Upper bound
@@ -252,8 +250,6 @@ class Search :
             alpha = mating_value
             if beta <= mating_value : 
                 return mating_value
-
-        moves = self.board.legal_moves
 
         # Fin de ligne
         if not bool(moves) :
