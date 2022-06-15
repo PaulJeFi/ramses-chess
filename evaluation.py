@@ -236,6 +236,7 @@ def mobility_square(square: chess.Square, piece: chess.Piece, occupied: int) -> 
 def bishop_pair(board: chess.Board, color: chess.Color) :
     if len(board.pieces(chess.BISHOP, color)) == 2 :
         return BISHOP_PAIR_BONNUS
+    return 0
 
 
 def king_safety(board: chess.Board, color: chess.Color, endgame_weight) :
