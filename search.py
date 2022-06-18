@@ -46,9 +46,18 @@ def get_ordered_moves(board: chess.Board, captures_only: bool=False) -> list :
         
     move_list = sorted(move_list, key=lambda k: k['cp'], reverse=True)
 
-    # Étape 2 : ne retourner que les captures si quiecsence :
+    # Étape 2 : ne retourner que les captures (+ échecs) si quiecsence :
     if captures_only :
-        return [move['move'] for move in move_list]
+
+        # Exctraction des coups déjà trouvés :
+        move_list = [move['move'] for move in move_list]
+
+        # Obtenir tous les coups qui mettent en échec + promotions :
+        for move in board.legal_moves :
+            if (not (move in move_list)) and (board.gives_check(move) or move.promotion != None) :
+                move_list.append(move)
+
+        return move_list
 
     # Étape 3 : savoir à partir d'où les captures ne sont pas bonnes (<= 150 cp)
     # pour insérer avant les autres coups :
@@ -57,8 +66,7 @@ def get_ordered_moves(board: chess.Board, captures_only: bool=False) -> list :
         if not (True in move_list) :
             good_index = len(move_list) - 1
         else :
-            good_index = len(move_list) - 1
-            #good_index = [(move['cp'] <= 150) for move in move_list].index(True)
+            good_index = [(move['cp'] <= 150) for move in move_list].index(True)
 
     # Étape 4 : insertion des autres coups
     castle = board.generate_castling_moves()
@@ -90,7 +98,7 @@ class Search :
         self.pv = list(range(int((self.depth*self.depth + self.depth)/2)+1))
         self.base_number_of_moves = len(self.board.move_stack) # pour distance to mate dans quiesce
     
-    def quiesce(self, alpha: float=-mateValue, beta: float=mateValue) -> float :
+    def quiesce(self, alpha: float=-mateValue, beta: float=mateValue, check_extension: int=1) -> float :
         '''Effectue une recherche de quiescence'''
 
         self.nodes += 1
@@ -100,11 +108,33 @@ class Search :
 
         # Fin de ligne
         if len(moves) == 0 :
-            if not bool(self.board.legal_moves) :
+            legals = self.board.legal_moves
+            if not bool(legals) :
                 if self.board.is_checkmate() :
                     return -mateValue + (self.base_number_of_moves - len(self.board.move_stack))
                 return 0
 
+            # Check exetension (tactical) :
+            if self.board.is_check() :
+
+                '''
+                if  stand_pat >= beta :
+                    return beta
+                if alpha < stand_pat :
+                    alpha = stand_pat
+                #'''
+
+                for move in legals :
+                    self.board.push(move)
+                    score = -self.quiesce(-beta, -alpha, check_extension)
+                    self.board.pop()
+
+                    if score >= beta :
+                        return beta
+                    if score > alpha :
+                        alpha = score
+                return alpha
+            
         # Mate distance pruning
         # Upper bound
         mating_value = mateValue - (self.base_number_of_moves - len(self.board.move_stack))
@@ -125,8 +155,30 @@ class Search :
             alpha = stand_pat
 
         for move in moves :
+            
+            # Check extension :
+            if (not self.board.is_capture(move)) and self.board.gives_check(move) :
+
+                # Limite d'extension atteinte :
+                if check_extension <= 0 :
+                    continue
+
+                # Recherche de l'extension :
+                self.board.push(move)
+                score = -self.quiesce(-beta, -alpha, check_extension-1)
+                self.board.pop()
+
+                if score >= beta :
+                    return beta
+                if score > alpha :
+                    alpha = score
+
+                continue # pour éviter le else
+                
+
+
             self.board.push(move)
-            score = -self.quiesce(-beta, -alpha)
+            score = -self.quiesce(-beta, -alpha, check_extension)
             self.board.pop()
 
             if score >= beta :
@@ -144,6 +196,8 @@ class Search :
         alpha = beta - 1
         # this is either a cut- or all-node
 
+        moves = get_ordered_moves(self.board)
+
         # Mate distance pruning
         # Upper bound
         mating_value = mateValue - (self.depth - depth)
@@ -157,8 +211,6 @@ class Search :
             alpha = mating_value
             if beta <= mating_value : 
                 return mating_value
-
-        moves = get_ordered_moves(self.board)
 
         # Fin de ligne
         if not bool(moves) :
@@ -231,5 +283,5 @@ class Search :
 
                 # PV store :
                 self.pv[pvIndex] = move
-
+        
         return alpha
