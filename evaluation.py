@@ -136,8 +136,8 @@ def evaluate(board: chess.Board=chess.Board()) -> float :
     whiteEval += bishop_pair(board, chess.WHITE)
     blackEval += bishop_pair(board, chess.BLACK)
 
-    whiteEval += king_safety(board, chess.WHITE, endgameWeight) * 0.3
-    blackEval += king_safety(board, chess.BLACK, endgameWeight) * 0.3
+    # whiteEval += king_safety(board, chess.WHITE, endgameWeight) * 0.3
+    # blackEval += king_safety(board, chess.BLACK, endgameWeight) * 0.3
 
     evaluation = whiteEval-blackEval
 
