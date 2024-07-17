@@ -1,4 +1,5 @@
-# Fichiers CPython
 __pycache__/
-# Fichiers MAC OSX
 .DS_Store
+.vscode
+.ipynb_checkpoints/
+lichess-bot/

@@ -43,10 +43,12 @@ class Searcher :
         self.seldepth = max(self.seldepth, self.ply)
 
         # Timeout check-up
-        if self.nodes % 1024 == 0 or self.timeout :
+        if self.nodes % 1024 == 0 :
             if time.time()*1000 - self.start_time >= self.time_ :
                 self.timeout = True
                 return 0
+        if self.timeout :
+            return 0
 
 
         # Quiescence
@@ -228,10 +230,12 @@ class Searcher :
         self.seldepth = max(self.seldepth, self.ply)
 
         # Timeout check-up
-        if self.nodes % 1024 == 0 or self.timeout :
+        if self.nodes % 1024 == 0 :
             if time.time()*1000 - self.start_time >= self.time_ :
                 self.timeout = True
                 return 0
+        if self.timeout :
+            return 0
 
         # Check for insufficient material
         if self.board.is_insufficient_material() and alpha < 0 :
@@ -322,12 +326,13 @@ class Searcher :
         move = get_book_move(board)
         if move != chess.Move.null() and board.is_legal(move) :
             send_message('info depth 10 score cp 0 pv ' + str(move))
-            send_message('bestmove ' + str(move))
+            send_message(f'bestmove {str(move)}')
             return
         
         moves = list(board.legal_moves)
         if not UCI_AnalyseMode :
             if len(moves) == 1 :
+                time.sleep(1/10)
                 send_message(f'info depth 1 score cp {evaluate(board)} pv {str(moves[0])}')
                 send_message('bestmove ' + str(moves[0]))
 
@@ -336,7 +341,6 @@ class Searcher :
         self.ply = 0
         self.timeout = False
         self.seldepth = 0
-        self.nodes = 0
         
         start_time = time.time() * 1000
         if time_ :
@@ -346,6 +350,7 @@ class Searcher :
         elapsed = time.time() * 1000 - start_time
 
         bestmove = ordering(board, 0, moves)[0]
+        second_m = chess.Move.null()
 
         for curr_depth in range(1, depth+1) :
 
@@ -358,19 +363,25 @@ class Searcher :
                 self.time_ = time_-elapsed
                 self.exclude = exclude
                 self.start_time = time.time() * 1000
+                self.nodes = 0
+                self.ply = 0
+                self.timeout = False
+                self.seldepth = 0
 
                 evaluation = self.pvSearch(depth=self.depth, beta=evaluation)
                 elapsed = time.time() * 1000 - start_time
-                exclude.append(move)
 
                 if self.timeout :
-                    send_message('bestmove ' + str(bestmove))
+                    send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
                     return None
 
                 PV = self.PV()
+                exclude.append(PV[0])
 
                 if i == 0 :
                     bestmove = PV[0]
+                    if len(PV) > 1 :
+                        second_m = PV[1]
 
                 send_message(f'info depth {self.depth} seldepth {self.seldepth}', end=' ')
                 send_message(multipv(i), end='')
@@ -378,7 +389,7 @@ class Searcher :
                 send_message(f'{int(1000 * self.nodes / elapsed)} time {int(elapsed)} hashfull {tt.hashfull()} pv {' '.join([str(move) for move in PV])}')
             
             if elapsed >= time_ or curr_depth >= depth :
-                send_message('bestmove ' + str(bestmove))
+                send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
                 return None
     
 MULTI_PV = 1
@@ -391,7 +402,7 @@ def multipv(i: int) -> str :
 
 def display_eval(evaluation: int) -> str :
     if evaluation >= VALUE_MATE - MAX_PLY or -evaluation >= VALUE_MATE - MAX_PLY :
-        return 'mate ' + str((1 if evaluation > 0 else -1) * math.ceil((VALUE_MATE + 1 - abs(evaluation))/2))
+        return 'mate ' + str((1 if evaluation > 0 else -1) * math.ceil((VALUE_MATE - math.ceil(abs(evaluation)))/2))
     return 'cp ' + str(evaluation) 
 
 def manage(time_: int, board: chess.Board, inc: int, movestogo: int) -> int :
