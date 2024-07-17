@@ -1,5 +1,7 @@
 import chess
+import random
 
+SKILL = 20
 
 WPAWN   = chess.Piece(chess.PAWN,   chess.WHITE)
 WKNIGHT = chess.Piece(chess.KNIGHT, chess.WHITE)
@@ -359,4 +361,9 @@ def evaluate(board: chess.Board) -> int :
     phase = (phase * 256 + 12) / 24
     score += ((MG * (256 - phase)) + (EG * phase)) / 256
 
-    return int(s2m * (score + late_eg))
+    return skill(s2m * (score + late_eg))
+
+def skill(value: float) -> int :
+    if SKILL == 20 :
+        return int(value) # faster this way
+    return int(value * SKILL / 20 + ((20 - SKILL) * random.random() * (SKILL - 20) * 200 - (SKILL - 20) * 100) / 20)

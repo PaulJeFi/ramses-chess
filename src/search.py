@@ -4,7 +4,7 @@ import chess
 import chess.syzygy
 import chess.polyglot
 from chess.polyglot import zobrist_hash
-from evaluation import evaluate
+import evaluation
 from tt import TT
 from utils import VALUE_MATE, MAX_PLY, BOUND_LOWER, BOUND_UPPER, BOUND_EXACT
 from utils import VALUE_TB, VALUE_TB_LOSS_IN_MAX_PLY, VALUE_TB_WIN_IN_MAX_PLY
@@ -120,22 +120,22 @@ class Searcher :
                     #else :
                     #    maxValue = value;
 
-        evaluation = evaluate(self.board)
+        evalu = evaluation.evaluate(self.board)
 
         # Futility pruning
-        if probe != None and depth < 13 and evaluation - 120*depth >= beta \
-           and evaluation >= beta and beta > VALUE_TB_LOSS_IN_MAX_PLY \
-           and evaluation < VALUE_TB_WIN_IN_MAX_PLY :
-            return beta + (evaluation - beta)//13
+        if probe != None and depth < 13 and evalu - 120*depth >= beta \
+           and evalu >= beta and beta > VALUE_TB_LOSS_IN_MAX_PLY \
+           and evalu < VALUE_TB_WIN_IN_MAX_PLY :
+            return beta + (evalu - beta)//13
         
         # Null move pruning
         if beta-alpha == 1 and not in_check \
            and self.board.move_stack[-1] != chess.Move.null() \
-           and evaluation >= beta and evaluation >= beta - 21 * depth + 390 \
+           and evalu >= beta and evalu >= beta - 21 * depth + 390 \
            and chess.popcount(self.board.occupied_co[self.board.turn]) - chess.popcount(self.board.pawns & self.board.occupied_co[self.board.turn]) > 1 \
            and beta > VALUE_TB_LOSS_IN_MAX_PLY :
             
-            R = min(int(evaluation- beta) / 202, 6) + depth / 3 + 5
+            R = min(int(evalu- beta) / 202, 6) + depth / 3 + 5
             self.ply += 1
             self.board.push(chess.Move.null())
             value = -self.pvSearch(-beta, -beta+1, depth-R)
@@ -250,7 +250,7 @@ class Searcher :
             if alpha >= beta :
                 return alpha
         
-        stand_pat = evaluate(self.board)
+        stand_pat = evaluation.evaluate(self.board)
         if stand_pat >= beta :
             return beta
         
@@ -333,7 +333,7 @@ class Searcher :
         if not UCI_AnalyseMode :
             if len(moves) == 1 :
                 time.sleep(1/10)
-                send_message(f'info depth 1 score cp {evaluate(board)} pv {str(moves[0])}')
+                send_message(f'info depth 1 score cp {evaluation.evaluate(board)} pv {str(moves[0])}')
                 send_message('bestmove ' + str(moves[0]))
 
         self.board = board
@@ -355,7 +355,7 @@ class Searcher :
         for curr_depth in range(1, depth+1) :
 
             exclude = []
-            evaluation = VALUE_MATE
+            evalu = VALUE_MATE
 
             for i in range(min(MULTI_PV, len(moves))) :
 
@@ -368,7 +368,7 @@ class Searcher :
                 self.timeout = False
                 self.seldepth = 0
 
-                evaluation = self.pvSearch(depth=self.depth, beta=evaluation)
+                evalu = self.pvSearch(depth=self.depth, beta=evalu)
                 elapsed = time.time() * 1000 - start_time
 
                 if self.timeout :
@@ -385,7 +385,7 @@ class Searcher :
 
                 send_message(f'info depth {self.depth} seldepth {self.seldepth}', end=' ')
                 send_message(multipv(i), end='')
-                send_message(f'score {display_eval(evaluation)} nodes {self.nodes} nps', end=' ')
+                send_message(f'score {display_eval(evalu)} nodes {self.nodes} nps', end=' ')
                 send_message(f'{int(1000 * self.nodes / elapsed)} time {int(elapsed)} hashfull {tt.hashfull()} pv {' '.join([str(move) for move in PV])}')
             
             if elapsed >= time_ or curr_depth >= depth :
@@ -400,13 +400,13 @@ def multipv(i: int) -> str :
         return ''
     return 'multipv ' + str(i+1) + ' '
 
-def display_eval(evaluation: int) -> str :
-    if evaluation >= VALUE_MATE - MAX_PLY or -evaluation >= VALUE_MATE - MAX_PLY :
-        return 'mate ' + str((1 if evaluation > 0 else -1) * math.ceil((VALUE_MATE - math.ceil(abs(evaluation)))/2))
-    return 'cp ' + str(evaluation) 
+def display_eval(evalu: int) -> str :
+    if evalu >= VALUE_MATE - MAX_PLY or -evalu >= VALUE_MATE - MAX_PLY :
+        return 'mate ' + str((1 if evalu > 0 else -1) * math.ceil((VALUE_MATE - math.ceil(abs(evalu)))/2))
+    return 'cp ' + str(evalu) 
 
 def manage(time_: int, board: chess.Board, inc: int, movestogo: int) -> int :
-    if movestogo == 0 :
+    Y = movestogo
+    if Y == 0 :
         Y = max(10, 40 - len(board.move_stack)/2)
-        return math.floor(clamp(time_/Y + inc * Y/10, 0, time_))
-    return math.floor(clamp(time_/movestogo + inc, 0, time_))
+    return math.floor(clamp(time_/Y + inc * Y/10, 0, time_))

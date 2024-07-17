@@ -49,6 +49,7 @@ if __name__ == '__main__' :
                 send_message('id name KoshKa\nid author Paul JF\n')
                 send_message('option name Hash type spin default 256 min 1 max 33554432')
                 send_message('option name Clear Tables type button')
+                send_message('option name Skill type spin default 20 min 0 max 20')
                 send_message('option name Book type string default <empty>')
                 send_message('option name SyzygyPath type string default <empty>')
                 send_message('option name MultiPV type spin default 1 min 1 max 500')
@@ -71,7 +72,7 @@ if __name__ == '__main__' :
             elif inp[0] == 'eval' :
                 view = 1 if board.turn else -1
                 send_message('Static eval : {} cp'.format(
-                    search.evaluate(board) * view
+                    search.evaluation.evaluate(board) * view
                 ))
 
             elif inp[0] == 'quit' :
@@ -169,6 +170,9 @@ if __name__ == '__main__' :
                 
                 if 'Hash' in inp :
                     search.tt.resize(int(inp[-1]))
+                
+                if 'Skill' in inp :
+                    search.evaluation.SKILL = clamp(int(inp[-1]), 0, 20)
 
         except IndexError :
             pass
