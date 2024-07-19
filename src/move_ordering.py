@@ -1,6 +1,7 @@
 import chess
 from utils import VALUE_MATE, MAX_PLY, clamp
 from typing import List
+from see import VALUES, see_capture
 
 MAX_HISTORY = 1000
 
@@ -60,7 +61,14 @@ def score_move(move: chess.Move, board: chess.Board, ply: int, best_move: chess.
         # with a smaller piece (like PxQ) is probably better than taking a
         # smaller piece with a valuable one (like QxP).
         
-        return MVV_LVA[board.piece_type_at(move.from_square)-1][board.piece_type_at(move.to_square)-1]
+        attacker_value = VALUES[board.piece_type_at(move.to_square)]
+        victime_value  = VALUES[board.piece_type_at(move.from_square)]
+
+        if attacker_value <= victime_value :
+            return victime_value - attacker_value
+        return see_capture(board, move)
+
+        #return MVV_LVA[board.piece_type_at(move.from_square)-1][board.piece_type_at(move.to_square)-1]
 
     # Else if the move is not a capture move, let's simply use Killer Moves and
     # History Heuristic

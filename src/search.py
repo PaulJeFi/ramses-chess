@@ -11,6 +11,7 @@ from utils import VALUE_TB, VALUE_TB_LOSS_IN_MAX_PLY, VALUE_TB_WIN_IN_MAX_PLY
 from utils import mate_in, mated_in, clamp, send_message
 from move_ordering import ordering, update_history, update_killers, reset_tables
 from typing import List
+from see import see_capture
 
 USE_TB  = True
 TB_PATH = './bases345'
@@ -49,7 +50,15 @@ class Searcher :
                 return 0
         if self.timeout :
             return 0
+        
+        # Initialize node
+        depth = min(depth, MAX_PLY-1)
+        bound = BOUND_LOWER
+        bestmove = chess.Move.null()
+        in_check = self.board.is_check()
 
+        if in_check and depth <= 0 :
+            depth = 1
 
         # Quiescence
         if depth <= 0 or self.ply >= MAX_PLY :
@@ -57,11 +66,7 @@ class Searcher :
             tt.save(self.board, depth, BOUND_EXACT, score, self.ply, timeout=self.timeout)
             return score
 
-        # Initialize node
-        depth = min(depth, MAX_PLY-1)
-        bound = BOUND_LOWER
-        bestmove = chess.Move.null()
-        in_check = self.board.is_check()
+        
 
         # Draw by repetition or insufficient material
         if self.ply != 0 and (self.board.is_repetition(2) or self.board.is_insufficient_material()) and alpha < 0 :
@@ -91,6 +96,7 @@ class Searcher :
 
             if wdl != None :
 
+                self.tbhits += 1
                 drawscore = 1
                 tbValue = VALUE_TB - self.ply
                 if wdl < -drawscore :
@@ -154,11 +160,6 @@ class Searcher :
         if probe != None and beta-alpha > 1 and depth > 5 :
             if probe[1] == None :
                 depth -= 3
-        if depth <= 0 :
-            score = self.quiesce(alpha, beta)
-            tt.save(self.board, depth, BOUND_EXACT, score, self.ply, timeout=self.timeout)
-            return score
-        
 
         # Move loop
         moves_tried = 0
@@ -195,7 +196,7 @@ class Searcher :
             moves_tried += 1
 
             if score >= beta : # fail-hard beta-cutoff
-                if not self.board.is_capture(move) :
+                if not is_capture :
                     update_history(self.board.piece_type_at(move.from_square), move.to_square, beta)
                     update_killers(move, self.ply)
                 alpha = beta
@@ -274,6 +275,9 @@ class Searcher :
         self.ply += 1
         for move in ordering(self.board, self.ply, self.board.generate_legal_captures()) :
 
+            if see_capture(self.board, move) < 0 :
+                continue
+
             self.board.push(move)
             score = -self.quiesce(-beta, -alpha)
             self.board.pop()
@@ -341,6 +345,7 @@ class Searcher :
         self.ply = 0
         self.timeout = False
         self.seldepth = 0
+        self.tbhits = 0
         
         start_time = time.time() * 1000
         if time_ :
@@ -367,6 +372,7 @@ class Searcher :
                 self.ply = 0
                 self.timeout = False
                 self.seldepth = 0
+                self.tbhits = 0
 
                 evalu = self.pvSearch(depth=self.depth, beta=evalu)
                 elapsed = time.time() * 1000 - start_time
@@ -386,7 +392,7 @@ class Searcher :
                 send_message(f'info depth {self.depth} seldepth {self.seldepth}', end=' ')
                 send_message(multipv(i), end='')
                 send_message(f'score {display_eval(evalu)} nodes {self.nodes} nps', end=' ')
-                send_message(f'{int(1000 * self.nodes / elapsed)} time {int(elapsed)} hashfull {tt.hashfull()} pv {' '.join([str(move) for move in PV])}')
+                send_message(f'{int(1000 * self.nodes / elapsed)} time {int(elapsed)} hashfull {tt.hashfull()} tbhits {self.tbhits} pv {' '.join([str(move) for move in PV])}')
             
             if elapsed >= time_ or curr_depth >= depth :
                 send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')

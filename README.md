@@ -1,6 +1,6 @@
 # Ramsès-Chess
 
-Réglisse is a chess engine using [```python-chess```](https://python-chess.readthedocs.io/en/latest/).
+Ramsès is a chess engine using [```python-chess```](https://python-chess.readthedocs.io/en/latest/).
 
 
 It currently has the following features :
@@ -46,6 +46,3 @@ I took a cat name. Ramsès is one of my friend's cat.
 
 ## LICENSE
 See the [license file](./LICENSE.txt) to know more about legal stuffs.
-
-## How to use
-You can run Réglisse in your favorite UCI GUI or in the terminal with [this script](./src/exe.sh). You may have to authorize access to this script first (```$ chmod +x [path to scipt]``` on MacOS and Linux). You need [node](https://nodejs.org/en/) to run Réglisse locally. You may have to modify ```/usr/local/bin/python3``` on [the script](./src/exe.sh) to the path to node on your system.
