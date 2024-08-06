@@ -131,7 +131,7 @@ class Searcher :
         # Futility pruning
         if probe != None and depth < 13 and evalu - 120*depth >= beta \
            and evalu >= beta and beta > VALUE_TB_LOSS_IN_MAX_PLY \
-           and evalu < VALUE_TB_WIN_IN_MAX_PLY :
+           and evalu < VALUE_TB_WIN_IN_MAX_PLY and self.ply > 0 :
             return beta + (evalu - beta)//13
         
         # Null move pruning
@@ -139,7 +139,7 @@ class Searcher :
            and self.board.move_stack[-1] != chess.Move.null() \
            and evalu >= beta and evalu >= beta - 21 * depth + 390 \
            and chess.popcount(self.board.occupied_co[self.board.turn]) - chess.popcount(self.board.pawns & self.board.occupied_co[self.board.turn]) > 1 \
-           and beta > VALUE_TB_LOSS_IN_MAX_PLY :
+           and beta > VALUE_TB_LOSS_IN_MAX_PLY and self.ply > 0 :
             
             R = min(int(evalu- beta) / 202, 6) + depth / 3 + 5
             self.ply += 1
@@ -415,4 +415,6 @@ def manage(time_: int, board: chess.Board, inc: int, movestogo: int) -> int :
     Y = movestogo
     if Y == 0 :
         Y = max(10, 40 - len(board.move_stack)/2)
-    return math.floor(clamp(time_/Y + inc * Y/10, 0, time_))
+    t = math.floor(clamp(time_/Y + inc * Y/10, 0, time_))
+    #send_message(f'info string I\'ll search for {t} ms')
+    return t

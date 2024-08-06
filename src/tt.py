@@ -87,6 +87,9 @@ class TT :
         entry = self.tt[hash_ & (self.size-1)]
 
         if hash_ == entry.key and entry.depth > depth :
+            if entry.move == chess.Move.null() :
+                entry.move  = move
+                self.tt[hash_ & (self.size-1)] = entry
             return None
         if hash_ != entry.key or move != chess.Move.null() : # we can keep the old ttmove if we have the same hash but no new move
             entry.move  = move
