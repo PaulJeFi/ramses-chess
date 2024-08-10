@@ -2,6 +2,9 @@ import chess
 import random
 
 SKILL = 20
+GRAIN = 10
+
+GRAIN = int(max(1, -GRAIN, GRAIN))
 
 WPAWN   = chess.Piece(chess.PAWN,   chess.WHITE)
 WKNIGHT = chess.Piece(chess.KNIGHT, chess.WHITE)
@@ -197,6 +200,9 @@ def evaluate(board: chess.Board) -> int :
 
     score, phase, EG, MG = 0, 24, 0, 0
 
+    w_pawns = board.pieces(chess.PAWN, chess.WHITE)
+    b_pawns = board.pieces(chess.PAWN, chess.BLACK)
+
     for square in chess.SquareSet(board.occupied) :
 
         piece = board.piece_at(square)
@@ -215,7 +221,6 @@ def evaluate(board: chess.Board) -> int :
 
                     file_ = chess.square_file(square)
                     file_BB = chess.BB_FILES[file_]
-                    w_pawns = board.pieces(chess.PAWN, chess.WHITE)
 
                     # doubled pawns
                     if chess.popcount(int(w_pawns & file_BB)) >= 1 :
@@ -275,7 +280,6 @@ def evaluate(board: chess.Board) -> int :
 
                     file_ = chess.square_file(square)
                     file_BB = chess.BB_FILES[file_]
-                    b_pawns = board.pieces(chess.PAWN, chess.BLACK)
 
                     # doubled pawns
                     if chess.popcount(int(b_pawns & file_BB)) >= 1 :
@@ -338,10 +342,10 @@ def evaluate(board: chess.Board) -> int :
     if board.piece_at(chess.G8) != BKNIGHT : MG -= 8
 
     # Trapped bishop
-    if board.piece_at(chess.A7) == WBISHOP  and  board.piece_at(chess.B6) == BPAWN :MG -= 120
-    if board.piece_at(chess.H7) == WBISHOP  and  board.piece_at(chess.G6) == BPAWN :MG -= 120
-    if board.piece_at(chess.A2) == BBISHOP  and  board.piece_at(chess.B3) == WPAWN :MG += 120
-    if board.piece_at(chess.H2) == BBISHOP  and  board.piece_at(chess.G3) == WPAWN :MG += 120
+    if board.piece_at(chess.A7) == WBISHOP  and  board.piece_at(chess.B6) == BPAWN : MG -= 120
+    if board.piece_at(chess.H7) == WBISHOP  and  board.piece_at(chess.G6) == BPAWN : MG -= 120
+    if board.piece_at(chess.A2) == BBISHOP  and  board.piece_at(chess.B3) == WPAWN : MG += 120
+    if board.piece_at(chess.H2) == BBISHOP  and  board.piece_at(chess.G3) == WPAWN : MG += 120
 
     # Central pawn control
     if (board.piece_at(chess.E4) == WPAWN  or  board.piece_at(chess.E5) == WPAWN) and \
@@ -365,5 +369,5 @@ def evaluate(board: chess.Board) -> int :
 
 def skill(value: float) -> int :
     if SKILL == 20 :
-        return int(value) # faster this way
-    return int(value * SKILL / 20 + ((20 - SKILL) * random.random() * (SKILL - 20) * 200 - (SKILL - 20) * 100) / 20)
+        return (int(value) // GRAIN) * GRAIN # faster this way
+    return int(((value * SKILL) // (20 - SKILL + GRAIN)) * (20 - SKILL + GRAIN) / 20 + ((20 - SKILL) * random.random() * (SKILL - 20) * 200 - (SKILL - 20) * 100) / 20)
