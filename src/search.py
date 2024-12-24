@@ -58,6 +58,7 @@ class Searcher :
         bestmove = chess.Move.null()
         in_check = self.board.is_check()
 
+        # Check extension
         if in_check and depth <= 0 :
             depth = 1
 
@@ -66,8 +67,6 @@ class Searcher :
             score = self.quiesce(alpha, beta)
             tt.save(self.board, depth, BOUND_EXACT, score, self.ply, timeout=self.timeout)
             return score
-
-        
 
         # Draw by repetition or insufficient material
         if self.ply != 0 and (self.board.is_repetition(2) or self.board.is_insufficient_material()) and alpha < 0 :
@@ -127,7 +126,7 @@ class Searcher :
                     #else :
                     #    maxValue = value;
 
-        evalu = new_eval.score(self.board, alpha, beta)#evaluation.evaluate(self.board)
+        evalu = evaluation.evaluate(self.board)
 
         # Futility pruning
         if probe != None and depth < 13 and evalu - 120*depth >= beta \
@@ -252,7 +251,7 @@ class Searcher :
             if alpha >= beta :
                 return alpha
         
-        stand_pat = new_eval.score(self.board, alpha, beta)#evaluation.evaluate(self.board)
+        stand_pat = evaluation.evaluate(self.board)
         if stand_pat >= beta :
             return beta
         
