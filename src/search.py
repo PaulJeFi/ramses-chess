@@ -12,6 +12,7 @@ from utils import mate_in, mated_in, clamp, send_message
 from move_ordering import ordering, update_history, update_killers, reset_tables
 from typing import List
 from see import see_capture
+import new_eval
 
 USE_TB  = True
 TB_PATH = './bases345'
@@ -126,7 +127,7 @@ class Searcher :
                     #else :
                     #    maxValue = value;
 
-        evalu = evaluation.evaluate(self.board)
+        evalu = new_eval.score(self.board, alpha, beta)#evaluation.evaluate(self.board)
 
         # Futility pruning
         if probe != None and depth < 13 and evalu - 120*depth >= beta \
@@ -251,7 +252,7 @@ class Searcher :
             if alpha >= beta :
                 return alpha
         
-        stand_pat = evaluation.evaluate(self.board)
+        stand_pat = new_eval.score(self.board, alpha, beta)#evaluation.evaluate(self.board)
         if stand_pat >= beta :
             return beta
         
@@ -357,6 +358,8 @@ class Searcher :
         bestmove = ordering(board, 0, moves)[0]
         second_m = chess.Move.null()
 
+        prev_eval = VALUE_MATE
+
         for curr_depth in range(1, depth+1) :
 
             exclude = []
@@ -374,8 +377,12 @@ class Searcher :
                 self.seldepth = 0
                 self.tbhits = 0
 
-                evalu = self.pvSearch(depth=self.depth, beta=evalu)
+                if i == 0 and self.depth >= 5 :
+                    evalu = self.aspiration(prev_eval)
+                else :
+                    evalu = self.pvSearch(depth=self.depth, beta=evalu)
                 elapsed = time.time() * 1000 - start_time
+                prev_eval = evalu
 
                 if self.timeout :
                     send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
@@ -397,6 +404,39 @@ class Searcher :
             if elapsed >= time_ or curr_depth >= depth :
                 send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
                 return None
+            
+    def aspiration(self, prev_eval: int) -> int :
+
+        delta = 30
+        alpha = prev_eval - delta
+        beta = prev_eval + delta
+        score = 0
+
+        while True :
+
+            if alpha < -3500 :
+                alpha = -VALUE_MATE
+            if beta > 3500 :
+                beta = VALUE_MATE
+
+            score = self.pvSearch(alpha=alpha, beta=beta, depth=self.depth)
+            
+            if self.timeout :
+                return 0
+            
+            if score <= alpha :
+                beta = (alpha + beta) / 2
+                alpha = max(alpha - delta, -VALUE_MATE)
+                delta += delta / 2
+            elif score >= beta :
+                beta = min(beta + delta, VALUE_MATE)
+                delta += delta / 2
+            else :
+                break
+
+        return score
+
+
     
 MULTI_PV = 1
 UCI_AnalyseMode = False
