@@ -383,10 +383,6 @@ class Searcher :
                 elapsed = time.time() * 1000 - start_time
                 prev_eval = evalu
 
-                if self.timeout :
-                    send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
-                    return None
-
                 PV = self.PV()
                 exclude.append(PV[0])
 
@@ -394,6 +390,10 @@ class Searcher :
                     bestmove = PV[0]
                     if len(PV) > 1 :
                         second_m = PV[1]
+
+                if self.timeout :
+                    send_message(f'bestmove {str(bestmove)} ponder {str(second_m)}')
+                    return None
 
                 send_message(f'info depth {self.depth} seldepth {self.seldepth}', end=' ')
                 send_message(multipv(i), end='')
